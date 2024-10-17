@@ -5,7 +5,7 @@ It does so by accumulating arguments in 2 arrays, then combines them with the de
 It lives in your `~/bashrc.d`.
 
 > [!WARNING]
-> # WIP: fully functional, just need to add documentation and maybe a nice demo gif.
+> Fully functional, just need to add documentation and maybe a nice demo gif.
 
 ## Requirements
 
