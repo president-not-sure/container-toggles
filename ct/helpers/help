@@ -11,7 +11,7 @@ help() {
 
     cat <<EOF
 ${bold@P}Usage:${reset@P}
-    ${bold@P}ct${reset@P} [toggle|option] [...] container [container_command_line]
+    ${bold@P}ct${reset@P} [ct|toggle|option]... container|command [container_command_line]
 
 ${bold@P}Options:${reset@P}
     ${bold@P}-d${reset@P}, ${bold@P}--dry-run${reset@P}          Only print the final command
@@ -41,7 +41,7 @@ ${bold@P}NAME${reset@P}
     ct - Easy toggling of common podman arguments
 
 ${bold@P}SYNOPSIS${reset@P}
-    ${bold@P}ct${reset@P} [toggle|option] [...] container [container_command_line]
+    ${bold@P}ct${reset@P} [ct|toggle|option]... container|command [container_command_line]
 
 ${bold@P}DESCRIPTION${reset@P}
     'ct' stands for container toggles. It's a bash script wrapper on the podman
