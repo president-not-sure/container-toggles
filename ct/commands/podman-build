@@ -37,7 +37,7 @@ podman-build() {
         fi
         ;;
     *)
-        echo "Input must the following form: '/path/image-name.Containerfile'"
+        echo "Input must be in the following form: '/path/to/image-name.Containerfile'"
         return 1
         ;;
     esac
