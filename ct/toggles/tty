@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# shellcheck disable=SC2086
+# shellcheck disable=SC2154
+t-tty() {
+    local self="${FUNCNAME[0]}"
+
+    # Check if the function already ran
+    if is-toggle-toggled "$self"; then
+        # Execute the remaining arguments and return success when done
+        "$@"
+        return
+    fi
+
+    # Add the function name the to the toggled array
+    toggled_array+=("$self")
+    # Add the arguments name the to the extra args array
+    extra_args_array+=(
+        --interactive
+        --tty
+    )
+
+    # Execute the remaining arguments
+    "$@"
+}

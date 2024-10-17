@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# shellcheck disable=SC2086
+# shellcheck disable=SC2154
+t-gpu() {
+    local self="${FUNCNAME[0]}"
+
+    # Check if the function already ran
+    if is-toggle-toggled "$self"; then
+        # Execute the remaining arguments and return success when done
+        "$@"
+        return
+    fi
+
+    # Toggle dependencies
+    t-device-dri
+    t-device-kfd
+
+    # Add the function name the to the toggled array
+    toggled_array+=("$self")
+
+    # Execute the remaining arguments
+    "$@"
+}

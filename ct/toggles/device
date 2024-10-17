@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# shellcheck disable=SC2086
+# shellcheck disable=SC2154
+t-device-dri() {
+    local self="${FUNCNAME[0]}"
+
+    # Check if the function already ran
+    if is-toggle-toggled "$self"; then
+        # Execute the remaining arguments and return success when done
+        "$@"
+        return
+    fi
+    is-sebool-enabled container_use_devices || return 1
+    is-user-in-group video || return 1
+    is-user-in-group render || return 1
+
+    # Toggle dependency
+    t-group-add-keep-groups 
+
+    # Add the function name the to the toggled array
+    toggled_array+=("$self")
+    # Add the arguments name the to the extra args array
+    extra_args_array+=(--device=/dev/dri:rwm)
+
+    # Execute the remaining arguments
+    "$@"
+}
+
+t-device-kfd() {
+    local self="${FUNCNAME[0]}"
+
+    # Check if the function already ran
+    if is-toggle-toggled "$self"; then
+        # Execute the remaining arguments and return success when done
+        "$@"
+        return
+    fi
+    is-sebool-enabled container_use_devices || return 1
+    is-user-in-group render || return 1
+
+    # Toggle dependency
+    t-group-add-keep-groups 
+
+    # Add the function name the to the toggled array
+    toggled_array+=("$self")
+    # Add the arguments name the to the extra args array
+    extra_args_array+=(--device=/dev/kfd:rwm)
+
+    # Execute the remaining arguments
+    "$@"
+}
+
+t-device-snd() {
+    local self="${FUNCNAME[0]}"
+
+    # Check if the function already ran
+    if is-toggle-toggled "$self"; then
+        # Execute the remaining arguments and return success when done
+        "$@"
+        return
+    fi
+    is-sebool-enabled container_use_devices || return 1
+
+    # Toggle dependency
+    t-group-add-keep-groups 
+
+    # Add the function name the to the toggled array
+    toggled_array+=("$self")
+    # Add the arguments name the to the extra args array
+    extra_args_array+=(--device=/dev/snd:rwm)
+
+    # Execute the remaining arguments
+    "$@"
+}

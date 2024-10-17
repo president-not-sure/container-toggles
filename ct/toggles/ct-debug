@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# shellcheck disable=SC2154
+t-ct-debug() {
+    local self="${FUNCNAME[0]}"
+
+    # Add the function name the to the toggled array
+    toggled_array+=("$self")
+
+    cat <<EOF
+
+ct-debug
+    Dumps 'ct' variables at the toggle stage in a readable way for debugging
+    purposes.
+
+"\${FUNCNAME[@]}" (only shows direct ancestors):
+$(printf "    %s\n" "${FUNCNAME[@]}")
+
+"\${toggled_array[@]}":
+$(printf "    %s\n" "${toggled_array[@]}")
+
+"\${extra_args_array[@]}":
+$(printf "    %s\n" "${extra_args_array[@]}")
+
+"\${global_extra_args_array[@]}":
+$(printf "    %s\n" "${global_extra_args_array[@]}")
+
+ROOTFUL:
+$(if test -v ROOTFUL; then
+    printf "    Set"
+else
+    printf "    Unset"
+fi)
+
+DRY_RUN:
+$(if test -v DRY_RUN; then
+    printf "    Set"
+else
+    printf "    Unset"
+fi)
+
+EOF
+}

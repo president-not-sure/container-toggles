@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# shellcheck disable=SC2034
+fedora-latest-base() {
+    declare -a default_global_args_array=(
+        
+    )
+
+    local name
+    name="$(generate-unique-name-base)"
+    declare -a default_args_array=(
+        --name="$name"
+        --hostname="$name"
+        --pull=newer
+    )
+
+    local image="quay.io/fedora/fedora:latest"
+
+    podman-run "$@"
+}
+
+fedora-latest() { ct rm tty fedora-latest-base "$@"; }

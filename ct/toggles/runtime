@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# shellcheck disable=SC2086
+# shellcheck disable=SC2154
+t-runtime-crun() {
+    local self="${FUNCNAME[0]}"
+
+    # Check if the function already ran
+    if is-toggle-toggled "$self"; then
+        # Execute the remaining arguments and return success when done
+        "$@"
+        return
+    fi
+
+    # Add the function name the to the toggled array
+    toggled_array+=("$self")
+
+    if is-command-installed /usr/bin/crun; then
+        # Add the arguments name the to the podmand extra args array
+        global_extra_args_array+=(--runtime=/usr/bin/crun)
+    else
+        echo "You need '/usr/bin/crun' to toggle 't-runtime-crun'"
+        return 1
+    fi
+
+    # Execute the remaining arguments
+    "$@"
+}

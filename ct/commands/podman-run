@@ -1,0 +1,57 @@
+#!/bin/bash
+
+podman-run() {
+    # Import environement variables if not ran by 'ct'
+    if ! test -v toggled_array; then
+        declare -a global_extra_args_array
+        declare -a extra_args_array
+        # If environment variable is not empty, convert the it's string into an array
+        if test -v GLOBAL_EXTRA_ARGS -a -n EXTRA_ARGS; then
+            read -ra global_extra_args_array <<<"$GLOBAL_EXTRA_ARGS"
+        fi
+        # If environment variable is not empty, convert the it's string into an array
+        if test -v EXTRA_ARGS -a -n EXTRA_ARGS; then
+            read -ra extra_args_array <<<"$EXTRA_ARGS"
+        fi
+    fi
+
+    if ! test -v image; then
+        local image
+    fi
+
+    # shellcheck disable=SC2153
+    # If IMAGE is not empty overwrite the default.
+    if test -v IMAGE -a -n IMAGE; then
+        image="$IMAGE"
+    fi
+
+    declare -a command_array=(
+        podman
+        "${default_global_args_array[@]}"
+        "${global_extra_args_array[@]}"
+        run
+        "${default_args_array[@]}"
+        "${extra_args_array[@]}"
+        "$image"
+        "$@"
+    )
+
+    declare -a sudo_command_array=(
+        sudo
+        "${command_array[@]}"
+    )
+
+    if test -v ROOTFUL; then
+        if test -v DRY_RUN; then
+            echo "${sudo_command_array[@]@Q}"
+        else
+            "${sudo_command_array[@]}"
+        fi
+    else
+        if test -v DRY_RUN; then
+            echo "${command_array[@]@Q}"
+        else
+            "${command_array[@]}"
+        fi
+    fi
+}

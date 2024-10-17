@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# shellcheck disable=SC2034
+debian-latest-base() {
+    declare -a default_global_args_array=(
+        
+    )
+
+    local name
+    name="$(generate-unique-name-base)"
+    declare -a default_args_array=(
+        --name="$name"
+        --hostname="$name"
+        --pull=newer
+    )
+
+    local image="docker.io/library/debian:latest"
+
+    podman-run "$@"
+}
+
+debian-latest() { ct rm tty debian-latest-base "$@"; }

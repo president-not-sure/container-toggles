@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# shellcheck disable=SC2086
+# shellcheck disable=SC2154
+t-gui() {
+    local self="${FUNCNAME[0]}"
+
+    # Check if the function already ran
+    if is-toggle-toggled "$self"; then
+        # Execute the remaining arguments and return success when done
+        "$@"
+        return
+    fi
+
+    # Toggle dependencies
+    t-device-dri
+    t-device-kfd
+    t-device-snd
+    is-selinux-installed && t-security-opt-type-container-runtime-t
+
+    # Add the function name the to the toggled array
+    toggled_array+=("$self")
+    # Add the arguments name the to the extra args array
+    extra_args_array+=(
+        --env=DISPLAY="$DISPLAY"
+        --env=WAYLAND_DISPLAY="$WAYLAND_DISPLAY"
+        --env=DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
+        --env=XAUTHORITY="$XAUTHORITY"
+        --env=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"
+        --volume="/tmp/.X11-unix:/tmp/.X11-unix:ro"
+        --volume="${XAUTHORITY}:${XAUTHORITY}:ro"
+        --volume="${XDG_RUNTIME_DIR}/bus:${XDG_RUNTIME_DIR}/bus:ro"
+        --volume="${XDG_RUNTIME_DIR}/pipewire-0:${XDG_RUNTIME_DIR}/pipewire-0:ro"
+    )
+
+    # Execute the remaining arguments
+    "$@"
+}

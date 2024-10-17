@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# shellcheck disable=SC2086
+# shellcheck disable=SC2154
+
+t-volume-home() {
+    local self="${FUNCNAME[0]}"
+
+    # Check if the function already ran
+    if is-toggle-toggled "$self"; then
+        # Execute the remaining arguments and return success when done
+        "$@"
+        return
+    fi
+
+    # Toggle dependency
+    t-security-opt-label-disable
+
+    # Add the function name the to the toggled array
+    toggled_array+=("$self")
+    # Add the arguments name the to the extra args array
+    extra_args_array+=(
+        --volume="${HOME}:${HOME}"
+        --volume="${HOME}/.bashrc.d"
+    )
+
+    # Execute the remaining arguments
+    "$@"
+}
+
+t-volume-run-media() {
+    local self="${FUNCNAME[0]}"
+
+    # Check if the function already ran
+    if is-toggle-toggled "$self"; then
+        # Execute the remaining arguments and return success when done
+        "$@"
+        return
+    fi
+
+    # Toggle dependency
+    t-security-opt-label-disable
+
+    # Add the function name the to the toggled array
+    toggled_array+=("$self")
+    # Add the arguments name the to the extra args array
+    extra_args_array+=(--volume=/run/media:/run/media)
+
+    # Execute the remaining arguments
+    "$@"
+}

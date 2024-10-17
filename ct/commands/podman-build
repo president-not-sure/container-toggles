@@ -1,0 +1,75 @@
+#!/bin/bash
+podman-build() {
+    # Import environement variables if not ran by 'ct'
+    if ! test -v toggled_array; then
+        declare -a global_extra_args_array
+        declare -a extra_args_array
+        # If environment variable is not empty, convert the it's string into an array
+        if test -v GLOBAL_EXTRA_ARGS -a -n EXTRA_ARGS; then
+            read -ra global_extra_args_array <<<"$GLOBAL_EXTRA_ARGS"
+        fi
+        # If environment variable is not empty, convert the it's string into an array
+        if test -v EXTRA_ARGS -a -n EXTRA_ARGS; then
+            read -ra extra_args_array <<<"$EXTRA_ARGS"
+        fi
+    fi
+
+    # Validate input
+    declare -a files
+    readarray -t files <<<"$1"
+    local file
+    file="${files[0]}"
+
+    case "$file" in
+    *.Containerfile | *.dockerfile)
+
+        if ! test -f "$file"; then
+            echo "'$file' does not exist."
+            return 1
+        fi
+
+        local name
+        name="$(echo "$file" | sed --regexp-extended 's:^.*/(.*)(\.Containerfile|\.dockerfile)$:\1:')"
+
+        if echo "$name" | grep '[^-a-zA-Z0-9]' 2>/dev/null; then
+            echo "'${name}' must only contain [-a-zA-Z0-9]."
+            return 1
+        fi
+        ;;
+    *)
+        echo "Input must the following form: '/path/image-name.Containerfile'"
+        return 1
+        ;;
+    esac
+
+    local timestamp
+    timestamp="$(date --utc --iso-8601=second | sed 's/.....$//g' | sed 's/[-+:]//g')Z"
+    declare -a command_array=(
+        podman
+        "${global_extra_args_array[@]}"
+        build
+        --tag="localhost/${name}:${timestamp}"
+        --tag="localhost/${name}:latest"
+        --file="$file"
+        "${extra_args_array[@]}"
+        .
+    )
+    declare -a sudo_command_array=(
+        sudo
+        "${command_array[@]}"
+    )
+
+    if test -v ROOTFUL; then
+        if test -v DRY_RUN; then
+            echo "${sudo_command_array[@]@Q}"
+        else
+            "${sudo_command_array[@]}"
+        fi
+    else
+        if test -v DRY_RUN; then
+            echo "${command_array[@]@Q}"
+        else
+            "${command_array[@]}"
+        fi
+    fi
+}

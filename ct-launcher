@@ -1,0 +1,106 @@
+#!/bin/bash
+
+# shellcheck disable=SC2086
+# shellcheck disable=SC1090
+# shellcheck disable=SC2154
+# shellcheck disable=SC2034
+
+# source the completions globally
+. ~/.bashrc.d/ct/completions/ct
+
+# source the containers globally
+readarray -d '' container_array < \
+    <(find ~/.bashrc.d/ct/containers -type f -print0 2>/dev/null)
+for container in "${container_array[@]}"; do
+    . "$container"
+done
+unset container container_array
+
+# entrypoint in a subshell to not pollute environment variables
+ct() { (
+    # recurse without having to create a new subshell
+    ct-recurse() {
+        local first_arg="$1"
+
+        case "$first_arg" in
+        -h | --help)
+            help
+            return
+            ;;
+        -l | --long-help)
+            long-help
+            return
+            ;;
+        -r | --rootful)
+            export ROOTFUL=
+            # consume the first argument and recurse
+            shift
+            ct-recurse "$@"
+            return
+            ;;
+        -d | --dry-run)
+            export DRY_RUN=
+            # consume the first argument and recurse
+            shift
+            ct-recurse "$@"
+            return
+            ;;
+        '')
+            help
+            echo "ct's first argument must not be empty"
+            return 1
+            ;;
+        *)
+            if is-toggle "$first_arg"; then
+                # consume the first argument and recurse
+                shift
+                "t-${first_arg}" ct-recurse "$@"
+                return
+            else
+                # If not a ct, pass on the env and execute remaining arguments
+                export GLOBAL_EXTRA_ARGS="${global_extra_args_array[*]}"
+                export EXTRA_ARGS="${extra_args_array[*]}"
+                export TOGGLED="${toggled_array[*]}"
+                "$@"
+                return
+            fi
+            ;;
+        esac
+    }
+
+    declare -a toggled_array
+    declare -a global_extra_args_array
+    declare -a global_args_array
+    declare -a extra_args_array
+    declare -a args_array
+
+    # If environment variable is not empty, convert the it's string into an array
+    if test -v GLOBAL_EXTRA_ARGS -a -n GLOBAL_EXTRA_ARGS; then
+        read -ra global_extra_args_array <<<"$GLOBAL_EXTRA_ARGS"
+    fi
+    # If environment variable is not empty, convert the it's string into an array
+    if test -v EXTRA_ARGS -a -n EXTRA_ARGS; then
+        read -ra extra_args_array <<<"$EXTRA_ARGS"
+    fi
+    # If environment variable is not empty, convert the it's string into an array
+    if test -v TOGGLED -a -n TOGGLED; then
+        read -ra toggled_array <<<"$TOGGLED"
+    fi
+
+    if test "$(id --user --name)" = "root"; then
+        echo "Cannot be run as root."
+        return 1
+    fi
+
+    local rc
+    declare -a rc_array
+    # source everything else locally
+    readarray -d '' rc_array < \
+        <(find ~/.bashrc.d/ct -type f -print0 2>/dev/null)
+    for rc in "${rc_array[@]}"; do
+        . "$rc"
+    done
+    unset rc rc_array
+
+    ct-recurse "$@"
+); }

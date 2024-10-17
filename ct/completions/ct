@@ -1,0 +1,161 @@
+#!/bin/bash
+
+_ct() {
+    declare -a dry_run_array=(-d --dry-run)
+    declare -a help_array=(-h --help)
+    declare -a long_help_array=(-l --long-help)
+    declare -a rootful_array=(-r --rootful)
+    declare -a option_array=(
+        "${dry_run_array[@]}"
+        "${help_array[@]}"
+        "${long_help_array[@]}"
+        "${rootful_array[@]}"
+    )
+
+    # source helpers
+    local helper
+    declare -a helper_array
+    readarray -d '' helper_array < <(find ~/.bashrc.d/ct/helpers -type f -print0 2>/dev/null)
+    for helper in "${helper_array[@]}"; do
+        # shellcheck disable=SC1090
+        . "$helper"
+    done
+    unset helper helper_array
+
+    # Parse command
+    local word
+    local toggle_flag=false
+    local container_flag=false
+    local dry_run_flag=false
+    local help_flag=false
+    local long_help_flag=false
+    local rootful_flag=false
+    declare -a toggle_found_array
+
+    for word in "${COMP_WORDS[@]}"; do
+        if is-container "$word"; then
+            container_flag=true
+            break
+        fi
+
+        if is-toggle "$word"; then
+            toggle_found_array+=("$word")
+            toggle_flag=true
+        fi
+
+        case "$word" in
+        -d | --dry-run)
+            dry_run_flag=true
+            ;;
+        -h | --help)
+            help_flag=true
+            break
+            ;;
+        -l | --long-help)
+            long_help_flag=true
+            break
+            ;;
+        -r | --rootful)
+            rootful_flag=true
+            ;;
+        esac
+
+        ((i++))
+    done
+
+    # Done if flags
+    if $container_flag; then
+        compopt -o default
+        COMPREPLY=()
+        return
+    elif $help_flag || $long_help_flag; then
+        compopt +o default
+        COMPREPLY=()
+        return
+    fi
+
+    find-and-remove-array() {
+        local index=0
+        local find
+        local remove
+        local -n find_array="$1"
+        local -n remove_array="$2"
+
+        for find in "${find_array[@]}"; do
+            index=0
+            for remove in "${remove_array[@]}"; do
+                if test "$find" = "$remove"; then
+                    unset 'remove_array[index]'
+                    remove_array=("${remove_array[@]}")
+                    break
+                fi
+                ((index++))
+            done
+        done
+    }
+
+
+    # Remove found options and arguments from arrays
+    if $dry_run_flag; then
+        find-and-remove-array dry_run_array option_array
+    fi
+    if $rootful_flag; then
+        find-and-remove-array rootful_array option_array
+    fi
+    declare -a toggle_array
+    read -ra toggle_array < <(print-toggle-list)
+    if $toggle_flag; then
+        find-and-remove-array toggle_found_array toggle_array
+    fi
+
+    declare -a container_array
+    read -ra container_array < <(print-container-list)
+    # Build the final array
+    declare -a all_array=(
+        "${option_array[@]}"
+        "${toggle_array[@]}"
+        "${container_array[@]}"
+    )
+
+    # Inspired by 'https://stackoverflow.com/questions/66483519/is-it-possible-to-categorize-the-bash-autocomplete-output'
+    # Format autocomplete with sections
+    format-compreply() {
+        local title="$1"
+        local current_word="${COMP_WORDS[COMP_CWORD]}"
+        declare -n section_array="$2"
+        declare -a section_compgen
+        readarray -t section_compgen < <(compgen -W "${section_array[*]}" -- "$current_word")
+
+        # If no completion possibilities in section, skip it
+        if (("${#section_compgen[@]}" == 0)); then
+            return
+        fi
+
+        # Append formatted section to COMPREPLY array
+        readarray -t -O "${#COMPREPLY[@]}" COMPREPLY < <(
+            # Title line left aligned
+            printf "%$((-COLUMNS))s\n" "${title}:"
+            # Completion possibilities displayed in columns, with self adjusted width ($COLUMNS) and with an indent of 4 spaces
+            printf "    %s\n" "${section_compgen[@]}" | column --columns "$COLUMNS" | expand
+            # Spacer line
+            printf "%$((COLUMNS))s" ""
+        )
+    }
+
+    declare -a sectionless_compgen
+    readarray -t sectionless_compgen < <(compgen -W "${all_array[*]}" -- "${COMP_WORDS[COMP_CWORD]}")
+    # If there is more than one completion possible AND showing possible completions was asked (<tab><tab> by default)
+    if (("${#sectionless_compgen[@]}" > 1 )) && ((COMP_TYPE==63)); then
+        format-compreply Options option_array
+        format-compreply Toggles toggle_array
+        format-compreply Containers container_array
+        # Remove last line (spacer)
+        unset 'COMPREPLY[${#COMPREPLY[@]}-1]'
+    # Otherwise, no sections, just complete (partial complete included)
+    else
+        COMPREPLY=("${sectionless_compgen[@]}")
+    fi
+}
+complete -o nosort -F _ct ct
+
+

@@ -1,0 +1,189 @@
+#!/bin/bash
+
+# shellcheck disable=SC2154
+# shellcheck disable=SC2086
+
+# Checks if the first argument is a command that is installed
+is-command-installed() {
+    local command="$1"
+
+    if ! command -v "$command" &>/dev/null; then
+        return 1
+    fi
+}
+
+# Checks if SELinux is installed
+is-selinux-installed() {
+    if ! is-command-installed sestatus; then
+        return 1
+    fi
+}
+
+# Checks if the first argument is a valid SELinux boolean
+is-sebool-valid() {
+    local sebool="$1"
+
+    if ! is-command-installed getsebool; then
+        echo "'getsebool' not installed"
+        return 1
+    fi
+
+    if ! getsebool "$sebool" 2>/dev/null | grep "$sebool" &>/dev/null; then
+        return 1
+    fi
+}
+
+# Checks if provided SELinux boolean is enabled
+is-sebool-enabled() {
+    local sebool="$1"
+
+    if ! is-sebool-valid "$sebool"; then
+        echo "'${sebool}' is not an SELinux boolean."
+        return 1
+    fi
+
+    if getsebool "$sebool" | grep off &>/dev/null; then
+        echo "You need to enable '${sebool}' SELinux boolean first:"
+        echo "  sudo setsebool -P ${sebool}=true"
+        return 1
+    fi
+}
+
+# Checks if the first argument is a valid group. If not, provides steps to create it.
+is-group-valid() {
+    local group="$1"
+
+    if test -z group; then
+        echo "group is empty"
+        return 1
+    fi
+
+    if ! test -f /etc/group; then
+        echo "'/etc/group' is missing"
+        return 1
+    fi
+
+    if ! grep "^${group}:" /etc/group &>/dev/null; then
+        cat <<EOF
+
+'${group}' entry missing from' /etc/group'
+
+To create the '${group}' group:
+    $ sudo groupadd --gid \$GID --groups --system ${group}
+(Atomic distributions e.g. Silverblue):
+    $ sudo /bin/sh -c "grep --regexp '^${group}:' /usr/lib/group >> /etc/group"
+
+Reboot to make the changes active
+
+EOF
+        return 1
+    fi
+}
+
+# Checks if the current user is in the group provided by the second argument. If not, provides steps to join it.
+is-user-in-group() {
+    local group="$1"
+    local user
+    user="$(id --user --name)"
+
+    if test -z group; then
+        echo "group is empty"
+        return 1
+    fi
+
+    if ! is-group-valid "$group"; then
+        return 1
+    fi
+
+    if ! id --groups --name | grep "\b${group}\b" &>/dev/null; then
+        cat <<EOF
+
+'${user}' is a member of '${group}'
+
+To join the '${group}' group:
+    $ sudo usermod --append --groups ${group} ${user}
+
+Reboot to make the changes active
+
+EOF
+        return 1
+    fi
+}
+
+# Checks if the first argument is in the array with name provided by the second argument.
+is-string-in-array() {
+    local string="$1"
+    declare -n array="$2"
+
+    if test -z string; then
+        echo "'is-string-in-array' requires the first argument to be string."
+        return 1
+    fi
+
+    if test -z array; then
+        echo "'is-string-in-array' requires the second argument to be an array name."
+        return 1
+    fi
+
+    local element
+    for element in "${array[@]}"; do
+        if test "$string" = "$element"; then
+            return
+        fi
+    done
+    return 1
+}
+
+# Checks if the first argument is a toggle.
+is-toggle() {
+    declare -a toggle_array
+    # shellcheck disable=SC2034
+    read -ra toggle_array < <(print-toggle-list)
+
+    if test -z toggle_input; then
+        echo "'is-toggle' requires the first argument to be a toggle name."
+        return 1
+    fi
+
+    local toggle_input="$1"
+    if is-string-in-array "$toggle_input" toggle_array; then
+        return
+    else
+        return 1
+    fi
+}
+
+# Checks if the first argument is a container
+is-container() {
+    declare -a container_array
+    # shellcheck disable=SC2034
+    read -ra container_array < <(print-container-list)
+
+    local container_input="$1"
+    if test -z container_input; then
+        echo "'is-container' requires the first argument to be a container name."
+        return 1
+    fi
+
+    if is-string-in-array "$container_input" container_array; then
+        return
+    else
+        return 1
+    fi
+}
+
+# Checks if the first argument is already toggled
+is-toggle-toggled() {
+    local toggle_input="$1"
+    if test -z toggle_input; then
+        echo "'is-toggle-toggled' requires the first argument to be a toggle name."
+        return 1
+    fi
+
+    local toggle_input="$1"
+    if is-string-in-array "$toggle_input" toggled_array; then
+        return
+    else
+        return 1
+    fi
+}

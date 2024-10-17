@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Find all container automatically
+print-container-list() {
+    find ~/.bashrc.d/ct/containers -type f \
+        -exec grep --extended-regexp --only-matching '^[-a-zA-Z0-9]+\(\) {' {} \; 2>/dev/null |
+        sed 's/[^-a-zA-Z0-9]*//g' |
+        sort --version-sort --ignore-case |
+        uniq |
+        xargs
+}
+
+# Find all container toggles automatically
+print-toggle-list() {
+    find ~/.bashrc.d/ct/toggles -type f \
+        -exec grep --extended-regexp --only-matching '^t-[-a-zA-Z0-9]+\(\) {' {} \; 2>/dev/null |
+        sed --regexp-extended 's/^t-([-a-zA-Z0-9]*).*/\1/g' |
+        sort --version-sort --ignore-case |
+        uniq |
+        xargs
+}
+
+generate-unique-name() {
+    local caller="${FUNCNAME[1]}"
+
+    local name
+    name="${caller}-$(uuidgen | head -c 8)"
+
+    echo "$name"
+}
+
+# Find all container automatically
+generate-unique-name-base() {
+    local caller="${FUNCNAME[1]}"
+
+    if ! [[ "$caller" =~ -base$ ]]; then
+        echo "The caller function for 'generate-unique-name-base' must be a base container."
+        return 1
+    fi
+
+    local name
+    name="${caller/%-base/}-$(uuidgen | head -c 8)"
+
+    echo "$name"
+}
